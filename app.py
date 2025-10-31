@@ -1,25 +1,29 @@
 import streamlit as st
-import pytesseract
-from pdf2image import convert_from_bytes
-from PIL import Image
+import pdfplumber
 import pandas as pd
 import io
 
-st.set_page_config(page_title="Nuevo Ingreso Clínico", layout="wide")
-st.title("🩺 Extracción de datos clínicos desde PDF")
+st.set_page_config(page_title="Extracción de texto clínico", layout="wide")
+st.title("📄 Extracción de texto desde PDF")
 
-uploaded_file = st.file_uploader("📄 Selecciona un informe PDF", type="pdf")
+# Subir archivo PDF
+uploaded_file = st.file_uploader("Selecciona un informe PDF", type="pdf")
 
 if uploaded_file:
     st.success("✅ PDF cargado correctamente.")
-    pages = convert_from_bytes(uploaded_file.read())
     texto = ""
-    for page in pages:
-        texto += pytesseract.image_to_string(page, lang='spa') + "\n"
 
+    # Extraer texto con pdfplumber
+    with pdfplumber.open(uploaded_file) as pdf:
+        for i, pagina in enumerate(pdf.pages):
+            contenido = pagina.extract_text()
+            texto += f"\n--- Página {i+1} ---\n{contenido}\n" if contenido else ""
+
+    # Mostrar texto extraído
     st.subheader("🧠 Texto extraído")
-    st.text_area("Contenido OCR", texto, height=300)
+    st.text_area("Contenido del PDF", texto, height=300)
 
+    # Exportar a Excel
     df = pd.DataFrame({"Texto extraído": [texto]})
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
